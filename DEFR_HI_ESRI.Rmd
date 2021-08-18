@@ -1,0 +1,105 @@
+---
+title: "DEFR_analysis"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# DEFR and HI
+
+This document explains the steps to calculate the proportion of total consumer spending dedicated to defensive and regrettable outlays (DEFR) and household investment. By definition, such expenditures do not contribute to current welfare, and thus should not be included in a welfare measure.
+
+##Load necessary packages
+```{r}
+library(DescTools)
+library(fitdistrplus)
+library(spatstat)
+library(tidyverse)
+```
+
+We start this with a number of files:
+(1) We have a lookup table that has all the variables we want from the ESRI consumer expenditure data, categorized into indicator and sub_indicator. Indicators include defensive and regrettable expenses (DEFR) and household investment (HI). Subindicators under these derive from Talberth and Weisdorf. This table provides the variable code, as well as the name of the data file that contains the county data.
+(2) We have 19 data files. Each contains 249 variables for all counties in Hawaii.
+
+Our first task is to make the table column in the lookup table match the syntax of the file names.
+
+## Build a table
+```{r}
+lookup <- read_csv("DEFR_HI.csv")
+
+#The syntax in the table column in the lookup table is different than the actual file name for each table. 
+#To build the "actual" file name in the lookup file, we split off anything after the "_" in the lookup table table name, and store these values in a matrix
+#Then we concatenate text to change CEX21 (in the lookup table) with CCEX20, the suffix stripped above, and add _cy. Now our "table" column in the lookup table reflects the syntax of the actual file names.
+suffix <- matrix(unlist(strsplit(lookup$table_name,"_")),ncol=2,byrow = T)
+#substr(lookup$table_name,7,8)
+lookup$filename=paste0("CCEX20_",suffix[,2],"_cy.csv")
+
+#We count the number of unique filenames, indicators, and subindicators in our lookup file
+uF <- unique(lookup$filename)
+
+#
+targetDF=NULL
+datapath="data/"
+for (i in 1:length(uF)){ #For loop that will iterate the number of unique file names
+  thisf=read.csv(paste0(datapath,uF[i])) #import the data file by concatenating the datapath (in this case the data folder) with the name of the ith filename
+  thesecol=subset(lookup,filename==uF[i])$variable_name_original #subset from file the variable name 
+  this_target=dplyr::select(thisf,all_of(thesecol)) #
+  if(i==1){
+    targetDF=cbind(dplyr::select(thisf,all_of(c("ID","NAME"))),this_target)
+  }else{
+    targetDF=cbind(targetDF,this_target)
+  }
+  print(targetDF)
+}
+longDF<-targetDF %>% 
+  pivot_longer(cols = 3:ncol(targetDF)) %>% 
+  rename(COUNTY=NAME,variable_name_original=name,variable_value=value) %>% 
+  left_join(y = lookup[,c("variable_name_original","indicator","sub_indicator")],by = "variable_name_original")
+longDF
+
+#Sum up by indicator
+#Careful here, though - right now DEFR double counts food!!
+indSum<-longDF %>% 
+  group_by(indicator) %>% 
+  summarize(Sum=sum(variable_value,na.rm=T))
+
+#check for completeness
+#uI <- unique(lookup$indicator)
+#left_join(data.frame(indicator=uI),indSum)
+
+#Sum up by subindicator
+subindSum<-longDF %>% 
+  group_by(sub_indicator) %>% 
+  summarize(Sum=sum(variable_value,na.rm=T))
+
+#check for completeness
+# uSI <- unique(lookup$sub_indicator)
+# left_join(data.frame(sub_indicator=uSI),subindSum)
+```
+
+## Calculate proportions of total expenditure
+Note this is on hold. We have an issue or two to figure out
+```{r}
+#subindSum$pct <- subindSum$Sum/indSum$Sum[which(indSum$indicator=="total")]
+#indSum$pct <- indSum$Sum/indSum$Sum[which(indSum$indicator=="total")]
+
+
+#Houston, we have a problem. The sum of the variable "Total expenditures" is less than the subtotal of just the variables we selected. What does this variable actually mean? 
+#We need to sum up ALL the highest level expenses to be able to calculate the percentage. I need to figure out how to do that.
+
+
+#sum(subindSum$Sum)-indSum$Sum[which(indSum$indicator=="total")]
+
+```
+
+Write to files
+```{r}
+write_csv(indSum, "Indicator sum.csv")
+write_csv(subindSum, "Subindicator sum.csv")     
+          
+```
+
