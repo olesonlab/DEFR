@@ -9,26 +9,27 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# DEFR and HI
-
-This document explains the steps to calculate the proportion of total consumer spending dedicated to defensive and regrettable outlays (DEFR) and household investment. By definition, such expenditures do not contribute to current welfare, and thus should not be included in a welfare measure.
-
-##Load necessary packages
-```{r}
+First, we have to read in the libraries needed for this analysis.
+```{r message=FALSE, warning=FALSE}
 library(DescTools)
 library(fitdistrplus)
 library(spatstat)
 library(tidyverse)
 ```
 
+# DEFR and HI
+
+This document explains the steps to calculate the proportion of total consumer spending dedicated to defensive and regrettable outlays (DEFR) and household investment. By definition, such expenditures do not contribute to current welfare, and thus should not be included in a welfare measure.
+
 We start this with a number of files:
-(1) We have a lookup table that has all the variables we want from the ESRI consumer expenditure data, categorized into indicator and sub_indicator. Indicators include defensive and regrettable expenses (DEFR) and household investment (HI). Subindicators under these derive from Talberth and Weisdorf. This table provides the variable code, as well as the name of the data file that contains the county data.
-(2) We have 19 data files. Each contains 249 variables for all counties in Hawaii.
 
-Our first task is to make the table column in the lookup table match the syntax of the file names.
+(1) We have a lookup table that has all the variables we want from the ESRI consumer expenditure data, categorized into indicator and sub_indicator. Indicators include defensive and regrettable expenses (DEFR) and household investment (HI). Subindicators under these derive from Talberth and Weisdorf. This table provides the variable code, as well as the name of the data file (from ESRI) that contains the county data. Note that the data from ESRI sometimes indicate the wrong datafile, so check this if you update it or the code will stop when it encounters a missing column in the data table.
 
-## Build a table
-```{r}
+(2) We have 19 data files. Each file contains 249 variables for all counties in Hawaii. The data were purchased from ESRI, and represent consumer expenditures in the year 2020. These data are at the county level. Variables are not mutually exclusive categories. The hierarchy of these data was really unclear from the information provided by ESRI. The file ESRI Data Comp - Variable List roughly captures the hierarchy, but caution is warranted if and when these data are updated. We manually coded the relevant DEFR variables.
+
+Our first task is to make the table column in the lookup table match the syntax of the file names. We need to do some data wrangling to be able to cross-walk the DEFR categories (and associated data files) with the various consumer spending csv files from ESRI.
+
+```{r message=FALSE, warning=FALSE}
 lookup <- read_csv("DEFR_HI.csv")
 
 #The syntax in the table column in the lookup table is different than the actual file name for each table. 
@@ -38,7 +39,7 @@ suffix <- matrix(unlist(strsplit(lookup$table_name,"_")),ncol=2,byrow = T)
 #substr(lookup$table_name,7,8)
 lookup$filename=paste0("CCEX20_",suffix[,2],"_cy.csv")
 
-#We count the number of unique filenames, indicators, and subindicators in our lookup file
+#We count the number of unique filenames in our lookup file
 uF <- unique(lookup$filename)
 
 #
@@ -53,16 +54,20 @@ for (i in 1:length(uF)){ #For loop that will iterate the number of unique file n
   }else{
     targetDF=cbind(targetDF,this_target)
   }
-  print(targetDF)
+#  print(targetDF)
 }
 longDF<-targetDF %>% 
   pivot_longer(cols = 3:ncol(targetDF)) %>% 
   rename(COUNTY=NAME,variable_name_original=name,variable_value=value) %>% 
   left_join(y = lookup[,c("variable_name_original","indicator","sub_indicator")],by = "variable_name_original")
-longDF
+#longDF
 
+```
+
+Then we sum up and summarize expenses by indicator (DEFR and HI) and, more importantly, subindicator. I have left in some code for completeness checks, which could become useful if and when new data are added.
+
+```{r}
 #Sum up by indicator
-#Careful here, though - right now DEFR double counts food!!
 indSum<-longDF %>% 
   group_by(indicator) %>% 
   summarize(Sum=sum(variable_value,na.rm=T))
@@ -81,25 +86,13 @@ subindSum<-longDF %>%
 # left_join(data.frame(sub_indicator=uSI),subindSum)
 ```
 
-## Calculate proportions of total expenditure
-Note this is on hold. We have an issue or two to figure out
+Finally, the results are written to output files.
 ```{r}
-#subindSum$pct <- subindSum$Sum/indSum$Sum[which(indSum$indicator=="total")]
-#indSum$pct <- indSum$Sum/indSum$Sum[which(indSum$indicator=="total")]
+subindSum
 
-
-#Houston, we have a problem. The sum of the variable "Total expenditures" is less than the subtotal of just the variables we selected. What does this variable actually mean? 
-#We need to sum up ALL the highest level expenses to be able to calculate the percentage. I need to figure out how to do that.
-
-
-#sum(subindSum$Sum)-indSum$Sum[which(indSum$indicator=="total")]
-
-```
-
-Write to files
-```{r}
 write_csv(indSum, "Indicator sum.csv")
 write_csv(subindSum, "Subindicator sum.csv")     
           
 ```
 
+We import these subindicator totals into the GPI spreadsheet, where we calculate the proportion of total consumer spending (using BEA consumer expenditure data). The methodology then applies this proportion across all previous years. For instance, is 1% of consumer spending was spent on household investment in 2020, that same percentage would be applied to all years in the study period.
