@@ -168,7 +168,7 @@ pre code {
 </div>
 
 
-<p>First, we have to read in the libraries needed for this analysis.</p>
+<p>First, we have to read in the libraries needed for this analysis. Remember to do these in order, as they mask each other.</p>
 <pre class="r"><code>library(DescTools)
 library(fitdistrplus)
 library(spatstat)
@@ -178,7 +178,7 @@ library(tidyverse)</code></pre>
 <p>This document explains the steps to calculate the proportion of total consumer spending dedicated to defensive and regrettable outlays (DEFR) and household investment. By definition, such expenditures do not contribute to current welfare, and thus should not be included in a welfare measure.</p>
 <p>We start this with a number of files:</p>
 <ol style="list-style-type: decimal">
-<li><p>We have a lookup table that has all the variables we want from the ESRI consumer expenditure data, categorized into indicator and sub_indicator. Indicators include defensive and regrettable expenses (DEFR) and household investment (HI). Subindicators under these derive from Talberth and Weisdorf. This table provides the variable code, as well as the name of the data file (from ESRI) that contains the county data. Note that the data from ESRI sometimes indicate the wrong datafile, so check this if you update it or the code will stop when it encounters a missing column in the data table.</p></li>
+<li><p>We have a lookup table (DEFR_HI.csv) that has all the variables we want from the ESRI consumer expenditure data, categorized into indicator and sub_indicator. Indicators include defensive and regrettable expenses (DEFR) and household investment (HI). Subindicators under these derive from Talberth and Weisdorf. The lookup table provides the ESRI variable name (code), as well as the ESRI data table file number that contains the county data. Note that the table file number provided by ESRI sometimes indicates the wrong datafile, so check this if you update the input file, or the code will stop when it encounters a missing column in the data table.</p></li>
 <li><p>We have 19 data files. Each file contains 249 variables for all counties in Hawaii. The data were purchased from ESRI, and represent consumer expenditures in the year 2020. These data are at the county level. Variables are not mutually exclusive categories. The hierarchy of these data was really unclear from the information provided by ESRI. The file ESRI Data Comp - Variable List roughly captures the hierarchy, but caution is warranted if and when these data are updated. We manually coded the relevant DEFR variables.</p></li>
 </ol>
 <p>Our first task is to make the table column in the lookup table match the syntax of the file names. We need to do some data wrangling to be able to cross-walk the DEFR categories (and associated data files) with the various consumer spending csv files from ESRI.</p>
@@ -249,7 +249,7 @@ subindSum&lt;-longDF %&gt;%
 ## # … with 15 more rows</code></pre>
 <pre class="r"><code>write_csv(indSum, &quot;Indicator sum.csv&quot;)
 write_csv(subindSum, &quot;Subindicator sum.csv&quot;)     </code></pre>
-<p>We import these subindicator totals into the GPI spreadsheet, where we calculate the proportion of total consumer spending (using BEA consumer expenditure data). The methodology then applies this proportion across all previous years. For instance, is 1% of consumer spending was spent on household investment in 2020, that same percentage would be applied to all years in the study period.</p>
+<p>We import these subindicator totals into the GPI spreadsheet. There, we calculate the proportion of total consumer spending (using BEA consumer expenditure data) for each subindicator category (from ESRI). The methodology then applies this proportion across all previous years. For instance, if 1% of consumer spending in Hawaii was spent on charitable giving in 2020, that same percentage would be applied to all years in the study period.</p>
 </div>
 
 
