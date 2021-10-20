@@ -9,7 +9,7 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-First, we have to read in the libraries needed for this analysis.
+First, we have to read in the libraries needed for this analysis. Remember to do these in order, as they mask each other.
 ```{r message=FALSE, warning=FALSE}
 library(DescTools)
 library(fitdistrplus)
@@ -23,7 +23,7 @@ This document explains the steps to calculate the proportion of total consumer s
 
 We start this with a number of files:
 
-(1) We have a lookup table that has all the variables we want from the ESRI consumer expenditure data, categorized into indicator and sub_indicator. Indicators include defensive and regrettable expenses (DEFR) and household investment (HI). Subindicators under these derive from Talberth and Weisdorf. This table provides the variable code, as well as the name of the data file (from ESRI) that contains the county data. Note that the data from ESRI sometimes indicate the wrong datafile, so check this if you update it or the code will stop when it encounters a missing column in the data table.
+(1) We have a lookup table (DEFR_HI.csv) that has all the variables we want from the ESRI consumer expenditure data, categorized into indicator and sub_indicator. Indicators include defensive and regrettable expenses (DEFR) and household investment (HI). Subindicators under these derive from Talberth and Weisdorf. The lookup table provides the ESRI variable name (code), as well as the ESRI data table file number that contains the county data. Note that the table file number provided by ESRI sometimes indicates the wrong datafile, so check this if you update the input file, or the code will stop when it encounters a missing column in the data table.
 
 (2) We have 19 data files. Each file contains 249 variables for all counties in Hawaii. The data were purchased from ESRI, and represent consumer expenditures in the year 2020. These data are at the county level. Variables are not mutually exclusive categories. The hierarchy of these data was really unclear from the information provided by ESRI. The file ESRI Data Comp - Variable List roughly captures the hierarchy, but caution is warranted if and when these data are updated. We manually coded the relevant DEFR variables.
 
@@ -95,4 +95,4 @@ write_csv(subindSum, "Subindicator sum.csv")
           
 ```
 
-We import these subindicator totals into the GPI spreadsheet, where we calculate the proportion of total consumer spending (using BEA consumer expenditure data). The methodology then applies this proportion across all previous years. For instance, is 1% of consumer spending was spent on household investment in 2020, that same percentage would be applied to all years in the study period.
+We import these subindicator totals into the GPI spreadsheet. There, we calculate the proportion of total consumer spending (using BEA consumer expenditure data) for each subindicator category (from ESRI). The methodology then applies this proportion across all previous years. For instance, if 1% of consumer spending in Hawaii was spent on charitable giving in 2020, that same percentage would be applied to all years in the study period.
